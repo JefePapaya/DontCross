@@ -254,7 +254,6 @@ class PlayState extends FlxTransitionableState
 			 point.x, point.y, linestyle);
 			_dirtyCanvas = true;
 		}
-		// _canvas.drawCircle(point.x, point.y, 5, FlxColor.MAGENTA);
 	}
 
 	function pointerOverlapsVertex():Vertex

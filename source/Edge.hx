@@ -105,8 +105,8 @@ class Edge extends FlxSprite
 			return false;
 		}
 		var interceptX = (otherConstant - constant) / deltaSlope;
-		if (interceptX > startPoint.x && interceptX < endPoint.x && 
-			interceptX > other.startPoint.x && interceptX < other.endPoint.x) {
+		if (interceptX - 1 > startPoint.x && interceptX + 1 < endPoint.x && 
+			interceptX - 1 > other.startPoint.x && interceptX + 1 < other.endPoint.x) {
 			FlxG.log.add("regular intercept");
 			sprIntercept.setPosition(interceptX, slope * interceptX + constant);
 			FlxG.state.add(sprIntercept);
