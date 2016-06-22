@@ -12,17 +12,29 @@ import flixel.math.FlxPoint;
 import flixel.text.FlxText;
 import flixel.ui.FlxButton;
 import flixel.math.FlxMath;
+import flixel.util.FlxAxes;
 import flixel.util.FlxColor;
 using flixel.util.FlxSpriteUtil;
 
 class PlayState extends FlxTransitionableState
 {
 	public var gameIsOver = false;
+	var _bg:FlxSprite;
 	var _canvas:FlxSprite;
 	var _grpVertex:FlxTypedGroup<Vertex>;
 	var _grpEdge:FlxTypedGroup<Edge>;
 	var _selectedVertex:Vertex;
 	var _targetVertex:Vertex;
+
+	//HUD
+	var _txtTitle:FlxText;
+	var _txtEdges:FlxText;
+	var _txtGameOver:FlxText;
+	var _grpHUD:FlxTypedGroup<FlxSprite>;
+
+	//Keep count
+	var _edgesToWin:Int;
+	var _dirtyCanvas:Bool = false;
 
 	var _highlightVertex:FlxSprite;
 	var _pointerBounds:FlxObject;
@@ -30,6 +42,8 @@ class PlayState extends FlxTransitionableState
 	override public function create():Void
 	{
 		super.create();
+
+		SizeInfo.setup();
 
 		//Transition prototype
 		transIn = new TransitionData();
@@ -40,10 +54,11 @@ class PlayState extends FlxTransitionableState
 		FlxTransitionableState.defaultTransIn = transIn;
 		FlxTransitionableState.defaultTransOut = transOut;
 
-		var bg = new FlxSprite();
-		bg.makeGraphic(FlxG.width, FlxG.height, FlxColor.WHITE, true);
-		add(bg);
+		_bg = new FlxSprite();
+		_bg.makeGraphic(FlxG.width, FlxG.height, FlxColor.WHITE, true);
+		add(_bg);
 
+		//Canvas
 		_canvas = new FlxSprite();
 		_canvas.makeGraphic(FlxG.width, FlxG.height, FlxColor.TRANSPARENT, true);
 		add(_canvas);
@@ -62,7 +77,28 @@ class PlayState extends FlxTransitionableState
 		_grpEdge = new FlxTypedGroup<Edge>();
 		add(_grpEdge);
 
-		_pointerBounds = new FlxObject(0, 0, 4, 4);
+		_pointerBounds = new FlxObject(0, 0, 1, 1);
+		_pointerBounds.visible = false;
+		add(_pointerBounds);
+
+
+		//HUD
+		_grpHUD = new FlxTypedGroup<FlxSprite>();
+		_txtEdges = new FlxText(0, 0, FlxG.width * 0.25, "0", 32);
+		_txtEdges.alignment = FlxTextAlign.CENTER;
+		_txtEdges.color = FlxColor.BLACK;
+		_txtEdges.screenCenter(FlxAxes.X);
+		_txtEdges.y = FlxG.height * 0.05;
+		_grpHUD.add(_txtEdges);
+
+		_txtGameOver = new FlxText(0, 0, FlxG.width, "YOU WIN!", 32);
+		_txtGameOver.alignment = FlxTextAlign.CENTER;
+		_txtGameOver.color = FlxColor.BLACK;
+		_txtGameOver.screenCenter(FlxAxes.XY);
+		_txtGameOver.visible = false;
+		_grpHUD.add(_txtGameOver);
+		add(_grpHUD);
+
 
 		FlxG.watch.add(Reg, "levelIndex");
 	}
@@ -70,6 +106,7 @@ class PlayState extends FlxTransitionableState
 	override public function update(elapsed:Float):Void
 	{
 		super.update(elapsed);
+		updateInteface();
 		updateInput();
 		if (!gameIsOver) {
 			updateWinCondition();
@@ -81,15 +118,31 @@ class PlayState extends FlxTransitionableState
 		if (Reg.levelIndex >= 0 && Reg.levelIndex < Reg.levelInfo.levels.length)
 		{
 			var level = Reg.levelInfo.levels[Reg.levelIndex];
+			var index = 0;
 			for (v in level.vertices) {
 				var vertex = new Vertex();
-				vertex.setPosition(v.x * FlxG.width, v.y * FlxG.height);
+				vertex.setPosition(Math.floor(v.x * FlxG.width - vertex.width/2), Math.floor(v.y * FlxG.height - vertex.height/2));
 				_grpVertex.add(vertex);	
+				index ++;
+				FlxG.watch.add(vertex, "width", "vertex" + index);
 			}
+			_edgesToWin = level.edgesToWin;
 		}
 		else 
 		{
 			FlxG.log.add("invalid level index");
+		}
+	}
+
+	function updateInteface()
+	{
+		_txtEdges.text = Std.string(_edgesToWin);
+		
+		if (Reg.levelIndex >= Reg.levelInfo.levels.length) {
+			_txtGameOver.visible = true;
+			_txtGameOver.text = "YOU WIN!";
+			_txtEdges.visible = false;
+			gameIsOver = true;
 		}
 	}
 
@@ -117,41 +170,104 @@ class PlayState extends FlxTransitionableState
 		var pointer:FlxPointer = null;
 
 		#if !FLX_NO_MOUSE
+		setPointerBoundsPosition(FlxG.mouse.getWorldPosition());
+		
 		if (FlxG.mouse.justReleased) {
-			pointer = FlxG.mouse;
+			var vertex = pointerOverlapsVertex();
+			clearCanvas();
+			unselectVertex(_selectedVertex);
+			if (vertex != null) {
+				chooseVertex(vertex);
+			}
 		}
+		else if (_selectedVertex != null) {
+			var vertex = pointerOverlapsVertex();
+			clearCanvas();
+			if (vertex != null) {
+				chooseVertex(vertex);
+			} 
+			else {
+				drawLineToPoint(_pointerBounds.getPosition());
+			}
+		}		
+
 		#end
 
 		#if !FLX_NO_TOUCH
-		if (FlxG.touches.justReleased() != null && FlxG.touches.justReleased().length > 0) {
-			pointer = FlxG.touches.justReleased()[FlxG.touches.justReleased().length - 1];
-		}
-		#end
 
-		if (pointer != null) 
+		if (FlxG.swipes != null && FlxG.swipes.length > 0)
 		{
-			_pointerBounds.x = pointer.x + Math.floor(_pointerBounds.width /2);
-			_pointerBounds.y = pointer.y + Math.floor(_pointerBounds.height /2);
-
-			if (FlxG.overlap(_pointerBounds, _grpVertex, chooseVertex))
-			{
-				//select smth
+			var swipe = FlxG.swipes[0];
+			if (Math.abs(swipe.startPosition.x - swipe.endPosition.x) > FlxG.width * 0.25)
+				{
+				if (swipe.startPosition.x < swipe.endPosition.x) {
+					Reg.levelIndex --;
+				}
+				else {
+					Reg.levelIndex ++;
+				}
+				restartLevel();
 			}
 		}
+		
+		if (FlxG.touches.list != null && FlxG.touches.list.length > 0) {
+			var touch = FlxG.touches.list[0];
+			setPointerBoundsPosition(touch.getWorldPosition());
+			pointer = touch;
+			clearCanvas();
+			if (!touch.justReleased) {
+				var vertex = pointerOverlapsVertex();
+				if (vertex != null) {
+					chooseVertex(vertex);
+				} 
+				else {
+					drawLineToPoint(_pointerBounds.getPosition());
+				}
+			}
+			else {
+				unselectVertex(_selectedVertex);
+			}
+		}
+
+		#end
+	}
+
+	function setPointerBoundsPosition(point:FlxPoint)
+	{
+		_pointerBounds.x = point.x + Math.floor(_pointerBounds.width /2);
+		_pointerBounds.y = point.y + Math.floor(_pointerBounds.height /2);
+	}
+
+	function clearCanvas() 
+	{
+		if (_dirtyCanvas) {
+			_canvas.fill(_bg.color);
+			_dirtyCanvas = false;
+		}	
+	}
+
+	function drawLineToPoint(point:FlxPoint)
+	{
+		if (_selectedVertex != null && point != null) {
+			var linestyle = { color: FlxColor.BLACK, thickness: SizeInfo.LINE_WIDTH };
+			_canvas.drawLine(_selectedVertex.x + _selectedVertex.width/2, _selectedVertex.y + _selectedVertex.height/2,
+			 point.x, point.y, linestyle);
+			_dirtyCanvas = true;
+		}
+		// _canvas.drawCircle(point.x, point.y, 5, FlxColor.MAGENTA);
+	}
+
+	function pointerOverlapsVertex():Vertex
+	{
+		var vertex = null;
+		FlxG.overlap(_pointerBounds, _grpVertex, function(p:FlxObject, v:Vertex){ vertex = v; });
+		return vertex;
 	}
 
 	function updateWinCondition()
 	{
-		if (_grpVertex.length > 0) {
-			var win = true;
-			_grpVertex.forEachAlive(function (v:Vertex){
-				if (v.edges.length < 2) {
-					win = false;
-				}
-			});
-			if (win == true) {
-				goToNextLevel();
-			}
+		if (_grpVertex.length > 0 && _edgesToWin <= 0) {
+			goToNextLevel();
 		}
 	}
 
@@ -187,11 +303,10 @@ class PlayState extends FlxTransitionableState
 		restartLevel();
 	}
 
-	function chooseVertex(pointer:FlxObject, vertex:Vertex)
+	function chooseVertex(vertex:Vertex)
 	{
 		if (_selectedVertex != null && _selectedVertex == vertex) {
-			unselectVertex(vertex);
-			FlxG.log.add("hideSelection");
+			return;
 		}
 		else if (_selectedVertex != null) {
 			if (!existsEdge(_selectedVertex,vertex)) {
@@ -209,13 +324,17 @@ class PlayState extends FlxTransitionableState
 	function selectVertex(v:Vertex)
 	{
 		_selectedVertex = v;
-		v.select();
+		if (v != null) {
+			v.select();
+		}
 	}
 
 	function unselectVertex(v:Vertex)
 	{
 		_selectedVertex = null;
-		v.unselect();
+		if (v != null) {
+			v.unselect();
+		}
 	}
 
 	function connectVertices(origin:Vertex, target:Vertex)
@@ -227,6 +346,9 @@ class PlayState extends FlxTransitionableState
 		_grpEdge.add(edge);
 		if (edgeCrosses(edge)) {
 			gameOver();
+		}
+		else {
+			_edgesToWin --;
 		}
 
 		FlxG.log.add("connect");
@@ -245,17 +367,6 @@ class PlayState extends FlxTransitionableState
 		});
 		return exists;
 	}
-
-	// function showSelection(vertex:FlxSprite)
-	// {
-	// 	_highlightVertex.visible = true;
-	// 	_highlightVertex.x = vertex.x - (_highlightVertex.width - vertex.width)/2;
-	// 	_highlightVertex.y = vertex.y - (_highlightVertex.height - vertex.height)/2;
-	// }
-	// function hideSelection(vertex:FlxSprite)
-	// {
-	// 	_highlightVertex.visible = false;
-	// }
 
 	function restartLevel() {
 		FlxG.switchState(new PlayState());

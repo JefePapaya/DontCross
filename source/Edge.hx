@@ -27,7 +27,7 @@ class Edge extends FlxSprite
 
 	public function connectVertices(origin:Vertex, target:Vertex)
 	{
-		var lineStyle = { color: FlxColor.BLACK, thickness: 2.0 };
+		var lineStyle = { color: FlxColor.BLACK, thickness: SizeInfo.LINE_WIDTH };
 		var fillStyle = { color: FlxColor.BLACK };
 		if (origin.x <= target.x) {
 			startPoint = new FlxPoint(origin.x + origin.width/2, origin.y + origin.height/2);
@@ -50,13 +50,17 @@ class Edge extends FlxSprite
 			return false;
 		}
 
+		var sprIntercept = new FlxSprite();
+		sprIntercept.makeGraphic(SizeInfo.VERTEX_WIDTH, SizeInfo.VERTEX_HEIGHT, FlxColor.MAGENTA);
+		// sprIntercept.drawCircle(SizeInfo.VERTEX_WIDTH/2, SizeInfo.VERTEX_HEIGHT/2, SizeInfo.VERTEX_WIDTH/2, FlxColor.MAGENTA);
+
 		var deltaX = deltaX();
 		var deltaY = deltaY();
 		var otherDeltaX = other.deltaX();
 		var otherDeltaY = other.deltaY();
 
 		if (deltaX == 0 && otherDeltaX == 0) {
-			FlxG.log.add("both deltas == 0");
+			FlxG.log.add("both deltas are equal");
 			return false;
 		}
 		else if (deltaX == 0) {
@@ -67,6 +71,8 @@ class Edge extends FlxSprite
 				(interceptY > Math.min(startPoint.y, endPoint.y) && interceptY < Math.max(startPoint.y, endPoint.y)))
 			{
 				FlxG.log.add("this 0 slope intercept");
+				sprIntercept.setPosition(startPoint.x, interceptY);
+				FlxG.state.add(sprIntercept);
 				return true;
 			}
 			FlxG.log.add("this slope 0 no intercept");
@@ -80,6 +86,8 @@ class Edge extends FlxSprite
 				(interceptY > Math.min(other.startPoint.y, other.endPoint.y) && interceptY < Math.max(other.startPoint.y, other.endPoint.y)))
 			{
 				FlxG.log.add("other 0 slope intercept");
+				sprIntercept.setPosition(other.startPoint.x, interceptY);
+				FlxG.state.add(sprIntercept);
 				return true;
 			}
 			FlxG.log.add("other slope 0 no intercept");
@@ -100,6 +108,8 @@ class Edge extends FlxSprite
 		if (interceptX > startPoint.x && interceptX < endPoint.x && 
 			interceptX > other.startPoint.x && interceptX < other.endPoint.x) {
 			FlxG.log.add("regular intercept");
+			sprIntercept.setPosition(interceptX, slope * interceptX + constant);
+			FlxG.state.add(sprIntercept);
 			return true;
 		}
 		else {

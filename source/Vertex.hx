@@ -15,10 +15,10 @@ class Vertex extends FlxSprite
 	override public function new(?X:Float = 0, ?Y:Float = 0)
 	{
 		super(X, Y);
-		makeGraphic(16, 16, FlxColor.BLACK);
+		makeGraphic(SizeInfo.VERTEX_WIDTH, SizeInfo.VERTEX_HEIGHT, FlxColor.BLACK);
 
 		_highlight = new FlxSprite();
-		_highlight.makeGraphic(32, 32, FlxColor.GRAY, true);
+		_highlight.makeGraphic(Math.floor(width * 2), Math.floor(height * 2), FlxColor.GRAY, true);
 		_highlight.visible = false;
 		edges = new FlxTypedGroup<Edge>();
 	}
