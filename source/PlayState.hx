@@ -147,7 +147,7 @@ class PlayState extends FlxTransitionableState
 	{
 		_txtEdges.text = Std.string(_edgesToWin);
 		
-		if (Reg.levelIndex >= Reg.levelInfo.levels.length) {
+		if (Reg.levelIndex >= Reg.levelInfo.levels.length && !Reg.playEditorLevel) {
 			_txtGameOver.visible = true;
 			_txtGameOver.text = "YOU WIN!";
 			_txtEdges.visible = false;
