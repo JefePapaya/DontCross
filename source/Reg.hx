@@ -11,6 +11,7 @@ class Reg
 	public static var save:FlxSave = new FlxSave();
 	public static var levelIndex:Int = 0;
 	public static var levelInfo:LevelInfo;
+	public static var playEditorLevel:Bool = false;
 
 	public static function setup()
 	{

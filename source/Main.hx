@@ -43,9 +43,9 @@ class Main extends Sprite
 			var gameHeight = Lib.current.stage.stageHeight;
 			var gameWidth = Lib.current.stage.stageWidth;
 			#if desktop
-			addChild(new FlxGame(gameWidth, gameHeight, PlayState, 1, 60, 60, true, false));
+			addChild(new FlxGame(gameWidth, gameHeight, MenuState, 1, 60, 60, true, false));
 			#else
-			addChild(new FlxGame(gameWidth, gameHeight, PlayState, 1, 60, 60, true, true));
+			addChild(new FlxGame(gameWidth, gameHeight, MenuState, 1, 60, 60, true, true));
 			#end
 			FlxG.scaleMode = new RatioScaleMode(true);
 		}

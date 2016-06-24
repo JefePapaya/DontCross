@@ -115,20 +115,29 @@ class PlayState extends FlxTransitionableState
 
 	function loadLevel()
 	{
-		if (Reg.levelIndex >= 0 && Reg.levelIndex < Reg.levelInfo.levels.length)
+		var level:Level = null;
+		if (Reg.playEditorLevel)
 		{
-			var level = Reg.levelInfo.levels[Reg.levelIndex];
+			level = Reg.levelInfo.editorLevel;
+		}
+		else if (Reg.levelIndex >= 0 && Reg.levelIndex < Reg.levelInfo.levels.length)
+		{
+			level = Reg.levelInfo.levels[Reg.levelIndex];
+		}
+		// Actually loads the level
+		if (level != null)
+		{
 			var index = 0;
 			for (v in level.vertices) {
 				var vertex = new Vertex();
 				vertex.setPosition(Math.floor(v.x * FlxG.width - vertex.width/2), Math.floor(v.y * FlxG.height - vertex.height/2));
-				_grpVertex.add(vertex);	
+				_grpVertex.add(vertex);
 				index ++;
 				FlxG.watch.add(vertex, "width", "vertex" + index);
 			}
 			_edgesToWin = level.edgesToWin;
 		}
-		else 
+		else
 		{
 			FlxG.log.add("invalid level index");
 		}
@@ -163,6 +172,10 @@ class PlayState extends FlxTransitionableState
 		{
 			Reg.levelIndex --;
 			restartLevel();
+		}
+		else if (FlxG.keys.justReleased.ESCAPE)
+		{
+			selectMenu();
 		}
 		#end
 		#end
@@ -291,6 +304,11 @@ class PlayState extends FlxTransitionableState
 		FlxTransitionableState.defaultTransIn.color = FlxColor.RED;
 		FlxTransitionableState.defaultTransIn.color = FlxColor.RED;
 		restartLevel();
+	}
+
+	function selectMenu():Void
+	{
+		FlxG.switchState(new MenuState());
 	}
 
 	function goToNextLevel()

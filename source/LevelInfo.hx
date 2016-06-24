@@ -3,6 +3,7 @@ package;
 class LevelInfo 
 {
 	public var levels:Array<Level>;
+	public var editorLevel:Level;
 
 	public function new()
 	{
